@@ -27,6 +27,9 @@ try:
     from anubis.chunker import SemanticChunker
     from anubis.embedder import EmbeddingClient
     from anubis.indexing import DocumentIndexer
+    from anubis.mcp import MCPServer
+    from anubis.query import QueryProcessor
+    from anubis.fastmcp_adapter import create_mcp_server
 except ImportError as e:
     logger.warning(f"Module import warning: {e}")
 
@@ -49,21 +52,21 @@ class IndexDocumentResponse(BaseModel):
 
 class QueryRequest(BaseModel):
     query: str
-    top_k: int = 3
-    include_scores: bool = True
+    top_k: int = 5
     document_filter: Optional[List[str]] = None
+    similarity_threshold: float = 0.0
 
 class QueryResult(BaseModel):
     chunk_id: str
     document_id: str
-    document_title: str
     content: str
-    score: float
+    similarity_score: float
     page_reference: Optional[str] = None
+    chunk_type: str = "text"
     metadata: Optional[dict] = None
 
 class QueryResponse(BaseModel):
-    results: List[QueryResult]
+    results: List[dict]  # List of result dicts
     query_time_ms: float
 
 class DocumentListResponse(BaseModel):
@@ -78,6 +81,9 @@ app_state = {
     "chunker": None,
     "embedder": None,
     "document_indexer": None,
+    "query_processor": None,
+    "mcp_server": None,
+    "fastmcp": None,
 }
 
 @asynccontextmanager
@@ -121,6 +127,30 @@ async def lifespan(app: FastAPI):
         )
         await app_state["auto_indexer"].start()
         logger.info("Auto-indexer started")
+        
+        # Initialize query processor
+        app_state["query_processor"] = QueryProcessor(
+            database=app_state["database"],
+            embedder=app_state["embedder"],
+            config=app_state["config"]
+        )
+        logger.info("Query processor initialized")
+        
+        # Initialize MCP server
+        app_state["mcp_server"] = MCPServer(
+            document_indexer=app_state["document_indexer"],
+            database=app_state["database"],
+            embedder=app_state["embedder"],
+            config=app_state["config"]
+        )
+        logger.info("MCP server initialized")
+        
+        # Initialize FastMCP adapter
+        try:
+            app_state["fastmcp"] = create_mcp_server(app_state["mcp_server"])
+            logger.info("FastMCP adapter initialized")
+        except Exception as e:
+            logger.warning(f"FastMCP initialization failed (optional): {e}")
         
     except Exception as e:
         logger.error(f"Startup failed: {e}")
@@ -230,21 +260,44 @@ async def index_document(request: IndexDocumentRequest):
 @app.post("/documents/query", response_model=QueryResponse)
 async def query_documents(request: QueryRequest):
     """
-    Query indexed documents
+    Query indexed documents using semantic search
     """
+    import time
+    start_time = time.time()
+    
     try:
         if not request.query:
             raise HTTPException(status_code=400, detail="Query cannot be empty")
         
-        # TODO: Implement actual query logic
-        # This will call the embedder, database vector search, and result formatting
+        if not app_state["query_processor"]:
+            raise HTTPException(status_code=503, detail="Query processor not initialized")
+        
+        logger.info(f"Query: {request.query}")
+        
+        # Execute search
+        results = await app_state["query_processor"].search(
+            query_text=request.query,
+            top_k=request.top_k or 5,
+            document_filter=request.document_filter,
+            similarity_threshold=request.similarity_threshold or 0.0
+        )
+        
+        # Convert to dicts
+        result_dicts = [r.to_dict() for r in results]
+        
+        elapsed_ms = (time.time() - start_time) * 1000
+        
+        logger.info(f"Query returned {len(results)} results in {elapsed_ms:.0f}ms")
         
         return QueryResponse(
-            results=[],
-            query_time_ms=0.0
+            results=result_dicts,
+            query_time_ms=elapsed_ms,
+            result_count=len(results)
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Query failed: {e}")
+        logger.error(f"Query failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/documents/list", response_model=DocumentListResponse)

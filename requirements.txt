@@ -6,6 +6,7 @@ pydantic-settings==2.1.0
 
 # MCP Server
 mcp==0.7.0
+fastmcp==0.2.0
 
 # Document Processing
 docling==0.28.0
