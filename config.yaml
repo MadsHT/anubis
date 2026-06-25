@@ -17,7 +17,7 @@ database:
 # Ollama Configuration
 ollama:
   base_url: "http://localhost:11434"
-  embedding_model: "embedding-gemma"
+  embedding_model: "embeddinggemma"
   pull_on_startup: true
   request_timeout: 300
 
