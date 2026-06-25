@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     libxcb1 \
     libx11-6 \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
