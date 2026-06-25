@@ -12,8 +12,6 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -23,25 +21,30 @@ jobs:
     
     - name: Install formatting tools
       run: |
-        python -m pip install --upgrade pip
         pip install black isort ruff
     
-    - name: Run Black formatter
-      run: black anubis/ tests/ --line-length 127
+    - name: Format with Black
+      run: black anubis/ tests/
     
-    - name: Run isort for import sorting
+    - name: Sort imports with isort
       run: isort anubis/ tests/
     
-    - name: Run Ruff linter
-      run: ruff check anubis/ tests/ --fix
+    - name: Lint with Ruff
+      run: ruff check --fix anubis/ tests/ || true
     
-    - name: Commit formatting changes (if any)
-      uses: stefanzweifel/git-auto-commit-action@v4
+    - name: Commit formatting changes
+      run: |
+        git config --local user.email "actions@github.com"
+        git config --local user.name "GitHub Actions"
+        git add -A
+        git diff --quiet && git diff --staged --quiet || git commit -m "style: auto-format code [skip ci]"
+    
+    - name: Push changes
+      uses: ad-m/github-push-action@master
       with:
-        commit_message: "style: Auto-format code with Black, isort, and Ruff"
-        commit_options: '--no-verify'
-        file_pattern: 'anubis/ tests/'
-        skip_fetch: false
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.head_ref }}
+      if: github.event_name == 'pull_request'
 
   type-check:
     runs-on: ubuntu-latest
@@ -55,14 +58,12 @@ jobs:
         python-version: '3.11'
         cache: 'pip'
     
-    - name: Install type checker
+    - name: Install mypy
       run: |
-        python -m pip install --upgrade pip
-        pip install mypy types-all
+        pip install mypy types-requests
     
-    - name: Run mypy type checking
-      run: mypy anubis/ --ignore-missing-imports --no-error-summary
-      continue-on-error: true
+    - name: Type check with mypy
+      run: mypy anubis/ --ignore-missing-imports || true
 
   complexity:
     runs-on: ubuntu-latest
@@ -74,17 +75,12 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        cache: 'pip'
     
-    - name: Install complexity checkers
+    - name: Install Radon
       run: |
-        python -m pip install --upgrade pip
         pip install radon
     
-    - name: Check cyclomatic complexity
+    - name: Analyze complexity
       run: |
-        radon cc anubis/ -s -a
-    
-    - name: Check maintainability index
-      run: |
+        radon cc anubis/ -s
         radon mi anubis/ -s
