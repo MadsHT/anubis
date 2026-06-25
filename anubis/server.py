@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import os
 import sys
+import httpx
 
 # Configure logging
 logging.basicConfig(
@@ -205,8 +206,27 @@ async def health_check():
     except Exception as e:
         services["auto_indexer"] = f"error: {str(e)}"
     
+    try:
+        if app_state["embedder"]:
+            # Test Ollama connection using sync httpx
+            try:
+                with httpx.Client(timeout=5) as client:
+                    response = client.get(
+                        f"{app_state['embedder'].base_url}/api/tags"
+                    )
+                    if response.status_code == 200:
+                        services["ollama"] = "ready"
+                    else:
+                        services["ollama"] = "unavailable"
+            except Exception as e:
+                services["ollama"] = f"error"
+        else:
+            services["ollama"] = "not_initialized"
+    except Exception as e:
+        services["ollama"] = f"error: {str(e)}"
+    
     # Check if all critical services are healthy
-    all_healthy = all(v in ["connected", "running"] for v in services.values())
+    all_healthy = all(v in ["connected", "running", "ready"] for v in services.values())
     
     return HealthResponse(
         status="healthy" if all_healthy else "degraded",
