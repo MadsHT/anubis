@@ -1,22 +1,32 @@
-# Minimal testing environment (CI-only)
-# This is used in GitHub Actions to reduce installation conflicts
+# Testing requirements for GitHub Actions CI/CD
+# Includes core dependencies needed by Anubis + testing framework
 
+# Web Framework
 fastapi>=0.104.0
 uvicorn>=0.24.0
 pydantic>=2.5.0
+pydantic-settings>=2.1.0
 
 # MCP Server
 mcp>=0.7.0
 fastmcp>=0.2.0
 
-# Document Processing (minimal)
+# Document Processing
 docling>=0.28.0
+docling-core>=1.5.0
+nltk>=3.8
+spacy>=3.7.2
 
-# DB
+# LLM/Embeddings
+ollama>=0.1.0
+openai>=1.3.0
+
+# DB & Vector Store
 psycopg2-binary>=2.9.9
 sqlalchemy>=2.0.20
+pgvector>=0.2.4
 
-# Testing
+# Testing & Coverage
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 pytest-cov>=4.1.0
@@ -25,3 +35,6 @@ httpx>=0.25.0
 # Utilities
 python-dotenv>=1.0.0
 pyyaml>=6.0
+requests>=2.31.0
+aiofiles>=23.2.0
+apscheduler>=3.10.4
