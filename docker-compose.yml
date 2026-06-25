@@ -31,7 +31,7 @@ services:
     entrypoint: sh -c 'sleep 15 && exec python -m anubis.server'
 
   postgres:
-    image: pgvector/pgvector:pg16-latest
+    image: pgvector/pgvector:pg18-trixie
     container_name: anubis-postgres
     environment:
       - POSTGRES_USER=${DB_USER:-anubis_user}
