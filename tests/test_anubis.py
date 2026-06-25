@@ -38,8 +38,8 @@ class TestDocumentParser:
         # Mock the actual parsing
         with patch.object(parser, 'parse', new_callable=AsyncMock) as mock_parse:
             mock_parse.return_value = ParsedDocument(
+                file_path="dummy.pdf",
                 title="Test Document",
-                content="Test content",
                 chunks=[],
                 metadata={"pages": 1}
             )
@@ -62,11 +62,11 @@ class TestSemanticChunker:
     
     def test_chunk_respects_max_size(self):
         """Test chunks don't exceed max size"""
-        config = {"chunker": {"chunk_size": 100, "overlap": 10}}
+        config = {"chunking": {"target_tokens": 100, "overlap_tokens": 10}}
         chunker = SemanticChunker(config)
         
         text = "word " * 50  # 250 words
-        chunks = chunker.chunk_text(text)
+        chunks = chunker.chunk(text)
         
         for chunk in chunks:
             # Check that no chunk exceeds reasonable size
@@ -74,11 +74,11 @@ class TestSemanticChunker:
     
     def test_chunk_preserves_structure(self):
         """Test chunks preserve heading structure"""
-        config = {"chunker": {"chunk_size": 512}}
+        config = {"chunking": {"target_tokens": 512}}
         chunker = SemanticChunker(config)
         
         text = "# Heading 1\nContent under heading\n## Heading 2\nMore content"
-        chunks = chunker.chunk_text(text)
+        chunks = chunker.chunk(text)
         
         # Should have multiple chunks
         assert len(chunks) > 0
@@ -92,14 +92,14 @@ class TestEmbeddingClient:
     @pytest.mark.asyncio
     async def test_embedder_initialization(self):
         """Test embedder can be initialized"""
-        config = {"ollama": {"host": "localhost", "port": 11434}}
+        config = {"ollama": {"base_url": "http://localhost:11434", "embedding_model": "nomic-embed-text-v1.5"}}
         embedder = EmbeddingClient(config)
         assert embedder is not None
     
     @pytest.mark.asyncio
     async def test_health_check_handles_offline_ollama(self):
         """Test health check when Ollama is offline"""
-        config = {"ollama": {"host": "localhost", "port": 11434}}
+        config = {"ollama": {"base_url": "http://localhost:11434", "embedding_model": "nomic-embed-text-v1.5"}}
         embedder = EmbeddingClient(config)
         
         with patch('httpx.AsyncClient.get', side_effect=Exception("Connection refused")):
@@ -109,28 +109,28 @@ class TestEmbeddingClient:
     @pytest.mark.asyncio
     async def test_embed_returns_vector(self):
         """Test embedding returns vector"""
-        config = {"ollama": {"host": "localhost", "port": 11434}}
+        config = {"ollama": {"base_url": "http://localhost:11434", "embedding_model": "nomic-embed-text-v1.5"}}
         embedder = EmbeddingClient(config)
         
-        with patch.object(embedder, 'embed', new_callable=AsyncMock) as mock_embed:
+        with patch.object(embedder, 'embed_text', new_callable=AsyncMock) as mock_embed:
             mock_embed.return_value = [0.1, 0.2, 0.3] * 256  # 768 dims
-            result = await embedder.embed("test text")
+            result = await embedder.embed_text("test text")
             assert result is not None
             assert len(result) == 768
     
     @pytest.mark.asyncio
     async def test_batch_embed_handles_failures(self):
         """Test batch embedding handles partial failures"""
-        config = {"ollama": {"host": "localhost"}}
+        config = {"ollama": {"base_url": "http://localhost:11434", "embedding_model": "nomic-embed-text-v1.5"}}
         embedder = EmbeddingClient(config)
         
-        with patch.object(embedder, 'batch_embed', new_callable=AsyncMock) as mock_batch:
+        with patch.object(embedder, 'embed_batch', new_callable=AsyncMock) as mock_batch:
             mock_batch.return_value = [
                 [0.1] * 768,  # Success
                 None,  # Failed
                 [0.2] * 768,  # Success
             ]
-            result = await embedder.batch_embed(["text1", "text2", "text3"])
+            result = await embedder.embed_batch(["text1", "text2", "text3"])
             assert len(result) == 3
             assert result[0] is not None
             assert result[1] is None
@@ -254,7 +254,7 @@ class TestQueryProcessor:
         
         formatted = processor.format_results_for_context(results)
         assert "Test content" in formatted
-        assert "95%" in formatted
+        assert "95.00%" in formatted
 
 
 class TestMCPServer:
