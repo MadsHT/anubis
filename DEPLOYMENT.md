@@ -7,38 +7,50 @@
 - 4GB+ RAM available
 - 20GB+ storage for models and database
 
-### Deployment Steps
+### Option 1: Production Deployment (Recommended for Portainer)
 
-1. **Clone or download the repository**
+Uses pre-built image from GitHub Container Registry - **no build required**.
+
+1. **Download docker-compose.yml**
    ```bash
-   git clone https://github.com/MadsHT/anubis.git
-   cd anubis
+   wget https://raw.githubusercontent.com/MadsHT/anubis/main/docker-compose.yml
    ```
 
 2. **Set up environment variables** (optional, uses defaults otherwise)
    ```bash
-   cp .env.example .env
-   # Edit .env and set DB_USER, DB_PASSWORD, DB_NAME if desired
+   cat > .env << EOF
+   DB_USER=anubis_user
+   DB_PASSWORD=your-secure-password-here
+   DB_NAME=anubis_db
+   EOF
    ```
 
 3. **Start the stack**
    ```bash
    docker-compose up -d
    ```
-   
-   This will:
-   - Build the Anubis FastAPI application
-   - Start PostgreSQL with pgvector extension
-   - Start Ollama for embeddings
-   - Create all necessary volumes
 
-4. **Verify services are running**
+4. **Pull embedding model** (one-time setup)
    ```bash
-   docker-compose ps
-   docker-compose logs rag-server
+   docker exec anubis-ollama ollama pull nomic-embed-text-v1.5
    ```
 
-5. **Pull embedding model into Ollama** (one-time setup)
+### Option 2: Development Deployment (Build Locally)
+
+Uses `docker-compose.dev.yml` to build the image from source.
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/MadsHT/anubis.git
+   cd anubis
+   ```
+
+2. **Start the stack**
+   ```bash
+   docker-compose -f docker-compose.dev.yml up -d
+   ```
+
+3. **Pull embedding model** (one-time setup)
    ```bash
    docker exec anubis-ollama ollama pull nomic-embed-text-v1.5
    ```
@@ -128,16 +140,21 @@ docker exec anubis-rag-server tail -f /app/logs/anubis.log
 ### Portainer Deployment
 
 1. In Portainer, go to **Stacks** → **Add Stack**
-2. Paste the content of `docker-compose.yml`
-3. Set environment variables in the **Env** section:
+2. Copy and paste the entire contents of `docker-compose.yml` from the repo
+3. In the **Env** section, set your environment variables:
    - `DB_USER=anubis_user`
    - `DB_PASSWORD=your-secure-password`
    - `DB_NAME=anubis_db`
-4. Deploy
-5. Once running, manually pull the embedding model:
+4. Click **Deploy**
+5. Once all services are running (check in Stacks → Containers), manually pull the embedding model:
    ```bash
+   # SSH into the Portainer host and run:
    docker exec anubis-ollama ollama pull nomic-embed-text-v1.5
    ```
+6. Services will be available at:
+   - API: http://localhost:8000
+   - Health check: http://localhost:8000/health
+   - API docs: http://localhost:8000/docs
 
 ### Next Steps
 
