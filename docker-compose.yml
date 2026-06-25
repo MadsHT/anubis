@@ -9,6 +9,10 @@ services:
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
       - DATABASE_URL=postgresql://${DB_USER:-anubis_user}:${DB_PASSWORD:-anubis_password}@postgres:5432/${DB_NAME:-anubis_db}
+      - DATABASE_HOST=postgres
+      - DB_USER=${DB_USER:-anubis_user}
+      - DB_PASSWORD=${DB_PASSWORD:-anubis_password}
+      - DB_NAME=${DB_NAME:-anubis_db}
       - WORKERS=4
       - LOG_LEVEL=INFO
       - AUTO_INDEX_INTERVAL=300
@@ -28,7 +32,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
-    entrypoint: sh -c 'sleep 15 && exec python -m anubis.server'
 
   postgres:
     image: pgvector/pgvector:pg18-trixie
