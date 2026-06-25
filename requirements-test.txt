@@ -1,23 +1,20 @@
-# Web Framework
+# Minimal testing environment (CI-only)
+# This is used in GitHub Actions to reduce installation conflicts
+
 fastapi>=0.104.0
 uvicorn>=0.24.0
 pydantic>=2.5.0
-pydantic-settings>=2.1.0
 
 # MCP Server
 mcp>=0.7.0
 fastmcp>=0.2.0
 
-# Document Processing
+# Document Processing (minimal)
 docling>=0.28.0
-docling-core>=1.5.0
-nltk>=3.8
 
-# Embeddings & Vector Search
-pgvector>=0.2.5
+# DB
 psycopg2-binary>=2.9.9
 sqlalchemy>=2.0.20
-ollama>=0.1.40
 
 # Testing
 pytest>=7.4.0
@@ -25,10 +22,6 @@ pytest-asyncio>=0.21.0
 pytest-cov>=4.1.0
 httpx>=0.25.0
 
-# Task Scheduling
-apscheduler>=3.10.4
-
 # Utilities
 python-dotenv>=1.0.0
 pyyaml>=6.0
-tenacity>=8.2.0

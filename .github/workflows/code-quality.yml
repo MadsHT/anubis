@@ -19,53 +19,27 @@ jobs:
         python-version: '3.11'
         cache: 'pip'
     
-    - name: Install formatting tools
+    - name: Install linting tools
       run: |
-        pip install black isort ruff
+        python -m pip install --upgrade pip
+        pip install flake8 black isort ruff mypy
     
-    - name: Format with Black
-      run: black anubis/ tests/
+    - name: Check formatting with Black
+      run: black --check anubis/ tests/ || true
     
-    - name: Sort imports with isort
-      run: isort anubis/ tests/
+    - name: Check import sorting with isort
+      run: isort --check-only anubis/ tests/ || true
     
     - name: Lint with Ruff
-      run: ruff check --fix anubis/ tests/ || true
+      run: ruff check anubis/ tests/ || true
     
-    - name: Commit formatting changes
-      run: |
-        git config --local user.email "actions@github.com"
-        git config --local user.name "GitHub Actions"
-        git add -A
-        git diff --quiet && git diff --staged --quiet || git commit -m "style: auto-format code [skip ci]"
-    
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: ${{ github.head_ref }}
-      if: github.event_name == 'pull_request'
-
-  type-check:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        cache: 'pip'
-    
-    - name: Install mypy
-      run: |
-        pip install mypy types-requests
+    - name: Lint with Flake8
+      run: flake8 anubis/ tests/ --max-line-length=100 --extend-ignore=E203,W503 || true
     
     - name: Type check with mypy
       run: mypy anubis/ --ignore-missing-imports || true
 
-  complexity:
+  security:
     runs-on: ubuntu-latest
     
     steps:
@@ -76,11 +50,13 @@ jobs:
       with:
         python-version: '3.11'
     
-    - name: Install Radon
+    - name: Install security tools
       run: |
-        pip install radon
+        python -m pip install --upgrade pip
+        pip install bandit safety
     
-    - name: Analyze complexity
-      run: |
-        radon cc anubis/ -s
-        radon mi anubis/ -s
+    - name: Run Bandit security scan
+      run: bandit -r anubis/ -ll -f json -o bandit-report.json || true
+    
+    - name: Run Safety vulnerability check
+      run: safety check --json || true
