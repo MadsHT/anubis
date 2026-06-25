@@ -53,8 +53,8 @@ jobs:
         context: .
         push: true
         tags: |
-          ghcr.io/${{ github.repository_owner | downcase }}/anubis:latest
-          ghcr.io/${{ github.repository_owner | downcase }}/anubis:${{ steps.version.outputs.VERSION }}
+          ghcr.io/madsht/anubis:latest
+          ghcr.io/madsht/anubis:${{ steps.version.outputs.VERSION }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
