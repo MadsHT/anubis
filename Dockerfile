@@ -1,20 +1,35 @@
-FROM python:3.11-slim
+FROM python:3.11-alpine AS builder
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    build-essential \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+# Install build dependencies (only in builder stage)
+RUN apk add --no-cache \
+    gcc \
+    musl-dev \
+    libffi-dev \
+    openssl-dev
 
 # Copy requirements
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install Python dependencies to a virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir -r requirements.txt
+
+
+FROM python:3.11-alpine
+
+WORKDIR /app
+
+# Install only runtime dependencies
+RUN apk add --no-cache \
+    curl \
+    postgresql-client
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application code
 COPY anubis/ ./anubis/
