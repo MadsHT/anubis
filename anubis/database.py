@@ -27,7 +27,7 @@ class DocumentChunk(Base):
     chunk_type = Column(String, default="text")  # text, table, image_caption
     page_num = Column(Integer)
     page_reference = Column(String)
-    metadata = Column(String)  # JSON string
+    metadata_json = Column(String)  # JSON string
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -41,7 +41,7 @@ class Document(Base):
     document_type = Column(String)
     file_size_bytes = Column(Integer)
     chunk_count = Column(Integer, default=0)
-    metadata = Column(String)  # JSON string
+    metadata_json = Column(String)  # JSON string
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -143,7 +143,7 @@ class Database:
             doc = Document(
                 file_path=file_path,
                 title=title or file_path,
-                metadata=str(metadata or {})
+                metadata_json=str(metadata or {})
             )
             session.add(doc)
             session.commit()
@@ -166,7 +166,7 @@ class Database:
                     chunk_type=chunk.get("type", "text"),
                     page_num=chunk.get("page_num"),
                     page_reference=chunk.get("page_reference"),
-                    metadata=str(chunk.get("metadata", {}))
+                    metadata_json=str(chunk.get("metadata", {}))
                 )
                 session.add(doc_chunk)
             
@@ -218,7 +218,7 @@ class Database:
                 DocumentChunk.content,
                 DocumentChunk.page_reference,
                 DocumentChunk.chunk_type,
-                DocumentChunk.metadata,
+                DocumentChunk.metadata_json,
                 (1 - (DocumentChunk.embedding.l2_distance(embedding))).label("score")
             ).order_by("score").limit(top_k).all()
             
