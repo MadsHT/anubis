@@ -18,11 +18,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Import modules (will implement in subsequent steps)
+# Import modules
 try:
     from anubis.config import load_config
     from anubis.database import Database
     from anubis.indexer import AutoIndexer
+    from anubis.parser import DocumentParser
+    from anubis.chunker import SemanticChunker
+    from anubis.embedder import EmbeddingClient
+    from anubis.indexing import DocumentIndexer
 except ImportError as e:
     logger.warning(f"Module import warning: {e}")
 
@@ -70,6 +74,10 @@ app_state = {
     "database": None,
     "auto_indexer": None,
     "config": None,
+    "parser": None,
+    "chunker": None,
+    "embedder": None,
+    "document_indexer": None,
 }
 
 @asynccontextmanager
@@ -84,6 +92,28 @@ async def lifespan(app: FastAPI):
         app_state["database"] = Database(app_state["config"])
         await app_state["database"].initialize()
         logger.info("Database initialized")
+        
+        # Initialize processing pipeline
+        app_state["parser"] = DocumentParser(app_state["config"])
+        app_state["chunker"] = SemanticChunker(app_state["config"])
+        app_state["embedder"] = EmbeddingClient(app_state["config"])
+        
+        # Check Ollama health
+        embedder_ready = await app_state["embedder"].health_check()
+        if not embedder_ready:
+            logger.warning("Ollama not available, indexing will fail")
+        else:
+            logger.info("Ollama connected")
+        
+        # Initialize document indexer
+        app_state["document_indexer"] = DocumentIndexer(
+            parser=app_state["parser"],
+            chunker=app_state["chunker"],
+            embedder=app_state["embedder"],
+            database=app_state["database"],
+            config=app_state["config"]
+        )
+        logger.info("Document indexer initialized")
         
         app_state["auto_indexer"] = AutoIndexer(
             database=app_state["database"],
@@ -156,27 +186,45 @@ async def health_check():
 @app.post("/documents/index", response_model=IndexDocumentResponse)
 async def index_document(request: IndexDocumentRequest):
     """
-    Index a single document
+    Index a single document end-to-end
     """
+    import time
+    start_time = time.time()
+    
     try:
-        if not os.path.exists(request.file_path):
-            raise HTTPException(
-                status_code=404,
-                detail=f"File not found: {request.file_path}"
-            )
+        if not app_state["document_indexer"]:
+            raise HTTPException(status_code=503, detail="Indexer not initialized")
         
-        # TODO: Implement actual indexing logic
-        # This will call the parser, chunker, embedder, and database
+        if not os.path.exists(request.file_path):
+            raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
+        
+        logger.info(f"Indexing request: {request.file_path}")
+        
+        # Run indexing
+        doc_id = await app_state["document_indexer"].index_document(request.file_path)
+        
+        if not doc_id:
+            raise HTTPException(status_code=500, detail="Indexing failed: no document ID returned")
+        
+        # Get document info
+        doc_info = await app_state["database"].get_document(doc_id)
+        chunks_created = doc_info.get("chunk_count", 0) if doc_info else 0
+        
+        elapsed_ms = (time.time() - start_time) * 1000
+        
+        logger.info(f"Successfully indexed {request.file_path}: {doc_id} ({chunks_created} chunks in {elapsed_ms:.0f}ms)")
         
         return IndexDocumentResponse(
             status="indexed",
-            document_id="doc_placeholder",
-            chunks_created=0,
-            vectors_stored=0,
-            processing_time_ms=0.0
+            document_id=doc_id,
+            chunks_created=chunks_created,
+            vectors_stored=chunks_created,
+            processing_time_ms=elapsed_ms
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Indexing failed: {e}")
+        logger.error(f"Indexing failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/documents/query", response_model=QueryResponse)
