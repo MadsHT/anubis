@@ -39,7 +39,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD:-anubis_password}
       - POSTGRES_DB=${DB_NAME:-anubis_db}
     volumes:
-      - anubis_postgres_data:/var/lib/postgresql/data
+      - anubis_postgres_data:/var/lib/postgresql
       - ./scripts/init-pgvector.sql:/docker-entrypoint-initdb.d/01-init-pgvector.sql
     ports:
       - "5432:5432"
@@ -63,10 +63,11 @@ services:
       - "11434:11434"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD-SHELL", "ollama serve --version || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
       - anubis-network
 
