@@ -2,13 +2,30 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install only runtime dependencies
+# Install system dependencies required for PDF parsing with Docling + OpenCV
+# These are needed by:
+# - docling-parse (PDF extraction with pypdfium2)
+# - rapidocr (optical character recognition via OpenCV)
+# - Pillow (image processing)
+# - OpenGL support for document layout analysis
 RUN apt-get update && apt-get install -y \
     curl \
     postgresql-client \
-    libxcb1 \
+    libglib2.0-0t64 \
     libx11-6 \
-    libgl1 \
+    libxcb1 \
+    libxau6 \
+    libxdmcp6 \
+    libdrm2 \
+    libgcc-s1 \
+    libstdc++6 \
+    libpcre2-8-0 \
+    libpng16-16t64 \
+    libz1 \
+    libglvnd0 \
+    libglx0 \
+    libgldispatch0 \
+    libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements (production only, no test deps)
