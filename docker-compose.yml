@@ -10,14 +10,14 @@ services:
       - "8000:8000"
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
-      - DATABASE_URL=postgresql://anubis_user:anubis_password@postgres:5432/anubis_db
+      - DATABASE_URL=postgresql://${DB_USER:-anubis_user}:${DB_PASSWORD:-anubis_password}@postgres:5432/${DB_NAME:-anubis_db}
       - WORKERS=4
       - LOG_LEVEL=INFO
       - AUTO_INDEX_INTERVAL=300
       - DOCUMENTS_PATH=/documents
     volumes:
-      - ./documents:/documents
-      - ./logs:/app/logs
+      - anubis_documents:/documents
+      - anubis_logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -30,25 +30,29 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    networks:
+      - anubis-network
 
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16-latest
     container_name: anubis-postgres
     environment:
-      - POSTGRES_USER=anubis_user
-      - POSTGRES_PASSWORD=anubis_password
-      - POSTGRES_DB=anubis_db
+      - POSTGRES_USER=${DB_USER:-anubis_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-anubis_password}
+      - POSTGRES_DB=${DB_NAME:-anubis_db}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - anubis_postgres_data:/var/lib/postgresql/data
       - ./scripts/init-pgvector.sql:/docker-entrypoint-initdb.d/01-init-pgvector.sql
     ports:
       - "5432:5432"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U anubis_user -d anubis_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-anubis_user} -d ${DB_NAME:-anubis_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - anubis-network
 
   ollama:
     image: ollama/ollama:latest
@@ -56,7 +60,7 @@ services:
     environment:
       - OLLAMA_MODELS=/root/.ollama/models
     volumes:
-      - ollama_data:/root/.ollama
+      - anubis_ollama_data:/root/.ollama
     ports:
       - "11434:11434"
     restart: unless-stopped
@@ -65,13 +69,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - anubis-network
 
 volumes:
-  postgres_data:
+  anubis_postgres_data:
     driver: local
-  ollama_data:
+  anubis_ollama_data:
+    driver: local
+  anubis_documents:
+    driver: local
+  anubis_logs:
     driver: local
 
 networks:
-  default:
-    name: anubis-network
+  anubis-network:
+    driver: bridge
