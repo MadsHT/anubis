@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   rag-server:
-    image: ghcr.io/madsht/anubis:v0.1
+    image: ghcr.io/madsht/anubis:0.1
     container_name: anubis-rag-server
     ports:
       - "8000:8000"
@@ -14,22 +14,21 @@ services:
       - AUTO_INDEX_INTERVAL=300
       - DOCUMENTS_PATH=/documents
     volumes:
-      - anubis_documents:/documents
-      - anubis_logs:/app/logs
+      - ./anubis_documents:/documents
+      - ./anubis_logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
       ollama:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 30s
-    networks:
-      - anubis-network
+      start_period: 60s
+    entrypoint: sh -c 'sleep 15 && exec python -m anubis.server'
 
   postgres:
     image: pgvector/pgvector:pg16-latest
