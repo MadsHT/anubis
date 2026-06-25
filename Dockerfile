@@ -1,5 +1,3 @@
-FROM python:3.11-alpine AS builder
-
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -13,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy requirements (production only, no test deps)
 COPY requirements.txt .
 
 # Install Python dependencies
