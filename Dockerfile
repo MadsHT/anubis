@@ -7,7 +7,9 @@ RUN apk add --no-cache \
     gcc \
     musl-dev \
     libffi-dev \
-    openssl-dev
+    openssl-dev \
+    python3-dev \
+    py3-setuptools
 
 # Copy requirements
 COPY requirements.txt .
