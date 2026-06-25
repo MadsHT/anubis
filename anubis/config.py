@@ -25,7 +25,7 @@ def load_config() -> Dict[str, Any]:
     if os.getenv("OLLAMA_BASE_URL"):
         config["ollama"]["base_url"] = os.getenv("OLLAMA_BASE_URL")
     if os.getenv("EMBEDDING_MODEL"):
-        config["embedding"]["model"] = os.getenv("EMBEDDING_MODEL")
+        config["ollama"]["embedding_model"] = os.getenv("EMBEDDING_MODEL")
     if os.getenv("AUTO_INDEX_INTERVAL"):
         config["auto_indexing"]["interval_seconds"] = int(os.getenv("AUTO_INDEX_INTERVAL"))
     
