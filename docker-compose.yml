@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  rag-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: anubis-rag-server
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - DATABASE_URL=postgresql://anubis_user:anubis_password@postgres:5432/anubis_db
+      - WORKERS=4
+      - LOG_LEVEL=INFO
+      - AUTO_INDEX_INTERVAL=300
+      - DOCUMENTS_PATH=/documents
+    volumes:
+      - ./documents:/documents
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: anubis-postgres
+    environment:
+      - POSTGRES_USER=anubis_user
+      - POSTGRES_PASSWORD=anubis_password
+      - POSTGRES_DB=anubis_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-pgvector.sql:/docker-entrypoint-initdb.d/01-init-pgvector.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anubis_user -d anubis_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: anubis-ollama
+    environment:
+      - OLLAMA_MODELS=/root/.ollama/models
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+  ollama_data:
+    driver: local
+
+networks:
+  default:
+    name: anubis-network

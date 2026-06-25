@@ -1,0 +1,39 @@
+# Web Framework
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# MCP Server
+mcp==0.7.0
+
+# Document Processing
+docling==0.28.0
+docling-core==1.5.0
+
+# Embeddings & Vector Search
+ollama==0.1.45
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+pgvector==0.2.5
+
+# Chunking & NLP
+nltk==3.8.1
+spacy==3.7.2
+
+# Scheduling
+apscheduler==3.10.4
+
+# Logging & Monitoring
+python-json-logger==2.0.7
+
+# Utilities
+pyyaml==6.0.1
+python-dotenv==1.0.0
+httpx==0.25.2
+
+# Development
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.12.0
+ruff==0.1.8

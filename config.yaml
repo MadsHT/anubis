@@ -1,0 +1,64 @@
+# Anubis RAG Engine Configuration
+
+# Server Settings
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  log_level: "INFO"
+
+# Database Configuration
+database:
+  url: "postgresql://anubis_user:***@localhost:5432/anubis_db"
+  pool_size: 20
+  max_overflow: 40
+  echo: false
+
+# Ollama Configuration
+ollama:
+  base_url: "http://localhost:11434"
+  embedding_model: "nomic-embed-text-v1.5"
+  pull_on_startup: true
+  request_timeout: 300
+
+# Document Processing
+document_processing:
+  documents_path: "/documents"
+  supported_formats:
+    - "pdf"
+  max_file_size_mb: 500
+
+# Chunking Strategy
+chunking:
+  strategy: "semantic"
+  target_tokens: 400
+  overlap_tokens: 50
+  preserve_tables: true
+  preserve_images: true
+
+# Auto-Indexing
+auto_indexing:
+  enabled: true
+  interval_seconds: 300
+  max_concurrent_jobs: 2
+
+# Vision (Optional)
+vision:
+  enabled: false
+  provider: "copilot"  # or "ollama" for local
+  fallback_on_error: true
+
+# Performance Tuning
+performance:
+  embedding_batch_size: 32
+  query_top_k_default: 3
+  vector_search_threshold: 0.3
+
+# Logging
+logging:
+  level: "INFO"
+  format: "json"
+  output: "file"
+  log_file: "/app/logs/anubis.log"
+  max_bytes: 52428800  # 50MB
+  backup_count: 5
