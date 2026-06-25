@@ -1,5 +1,9 @@
 # Anubis: Self-Hosted Document RAG Engine
 
+[![Tests](https://github.com/MadsHT/anubis/actions/workflows/tests.yml/badge.svg)](https://github.com/MadsHT/anubis/actions/workflows/tests.yml)
+[![Code Quality](https://github.com/MadsHT/anubis/actions/workflows/code-quality.yml/badge.svg)](https://github.com/MadsHT/anubis/actions/workflows/code-quality.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 > **Note:** This project is **mostly AI-generated** using Claude AI as part of the development process.
 
 ## Overview

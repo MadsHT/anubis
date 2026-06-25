@@ -1,0 +1,60 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install documentation tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install mkdocs mkdocs-material markdown
+    
+    - name: Check README
+      run: |
+        if [ ! -f README.md ]; then
+          echo "README.md is missing"
+          exit 1
+        fi
+        wc -l README.md
+    
+    - name: Validate markdown
+      run: |
+        python -m pip install mdl
+        mdl README.md tests/README.md || true
+
+  changelog:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Create CHANGELOG template if missing
+      run: |
+        if [ ! -f CHANGELOG.md ]; then
+          echo "Creating CHANGELOG.md template..."
+          touch CHANGELOG.md
+        fi
+    
+    - name: Check documentation completeness
+      run: |
+        echo "Checking documentation files..."
+        test -f README.md && echo "✓ README.md exists"
+        test -f tests/README.md && echo "✓ tests/README.md exists"
+        test -f LICENSE && echo "✓ LICENSE exists"

@@ -1,0 +1,189 @@
+name: Tests & CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: anubis_test
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: anubis_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      ollama:
+        image: ollama/ollama:latest
+        options: >-
+          --health-cmd "curl -f http://localhost:11434/api/tags || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 11434:11434
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Pull Ollama model
+      run: |
+        curl http://localhost:11434/api/pull -d '{"name": "nomic-embed-text-v1.5"}'
+      continue-on-error: true
+    
+    - name: Run unit tests
+      run: |
+        pytest tests/ -v --tb=short -m "not integration"
+    
+    - name: Run integration tests
+      run: |
+        pytest tests/ -v --tb=short -m integration
+      env:
+        DATABASE_URL: postgresql://anubis_test:test_password@localhost:5432/anubis_test
+        OLLAMA_HOST: http://localhost:11434
+    
+    - name: Generate coverage report
+      run: |
+        pytest tests/ --cov=anubis --cov-report=xml --cov-report=term-missing
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install linting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort pylint
+    
+    - name: Run flake8
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 anubis/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 anubis/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Check code formatting with Black
+      run: |
+        black --check anubis/ tests/ || true
+    
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only anubis/ tests/ || true
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+    
+    - name: Run Bandit security scan
+      run: |
+        bandit -r anubis/ -f json -o bandit-report.json || true
+        bandit -r anubis/ -f txt
+    
+    - name: Check dependencies with Safety
+      run: |
+        safety check --file requirements.txt || true
+
+  build:
+    needs: [test, lint]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: false
+        tags: anubis:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Check README exists
+      run: |
+        test -f README.md && echo "README.md found" || (echo "README.md missing" && exit 1)
+    
+    - name: Check tests README exists
+      run: |
+        test -f tests/README.md && echo "tests/README.md found" || (echo "tests/README.md missing" && exit 1)
+    
+    - name: Validate JSON in config.yaml
+      run: |
+        python -c "import yaml; yaml.safe_load(open('config.yaml'))" || true
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Dependency Submission
+      uses: advanced-security/dependency-submission-action@v3
+      with:
+        file-path: 'requirements.txt'
